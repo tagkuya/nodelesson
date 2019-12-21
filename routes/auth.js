@@ -1,6 +1,8 @@
 const express = require("express");
+const { check } = require("express-validator/check");
 
 const authController = require("../controllers/auth");
+const User = require("../models/user");
 
 const router = express.Router();
 
@@ -12,9 +14,37 @@ router.get("/reset/:token", authController.getNewPassword);
 
 router.get("/reset", authController.getRest);
 
-router.post("/login", authController.postLogin);
+router.post(
+  "/login",
+  check("email")
+    .isEmail()
+    .withMessage("Please enter valid e-mail address")
+    .normalizeEmail(),
+  check("password")
+    .isLength({ min: 8 })
+    .isAlphanumeric()
+    .withMessage("Password has to be valid")
+    .trim(),
+  authController.postLogin
+);
 
-router.post("/signup", authController.postSignup);
+router.post(
+  "/signup",
+  [
+    check("email")
+      .isEmail()
+      .withMessage("Please input valid e-mail address")
+      .normalizeEmail()
+      .custom((value, { req }) => {
+        return User.findOne({ email: value }).then(userDoc => {
+          if (userDoc) {
+            return Promise.reject("Please pick a different one.");
+          }
+        });
+      })
+  ],
+  authController.postSignup
+);
 
 router.post("/logout", authController.postLogout);
 

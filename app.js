@@ -10,6 +10,7 @@ const authRoutes = require("./routes/auth");
 const MongoDBStore = require("connect-mongodb-session")(session);
 const csrf = require("csurf");
 const flash = require("connect-flash");
+const multer = require("multer");
 
 require("dotenv").config();
 
@@ -21,14 +22,38 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const app = express();
 const store = new MongoDBStore({
   uri: MONGODB_URI,
-  collection: "sessions"
+  collection: "sessions",
 });
 const csrfProtection = csrf();
+
+const fileStorage = multer.diskStorage({
+  destination: (req, res, cd) => {
+    cd(null, "images");
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString() + "-", file.originalname)
+  }
+});
+
+const fileFilter = (req, file, cd) => {
+  if (file.mimetype === "images/png" || file.mimetype === "images/jpg" || file.mimetype === "images/jpeg") {
+    cd(null, true)
+  } else {
+    cd(null, false)
+  }
+}
 
 app.set("view engine", "ejs");
 app.set("views", "views");
 
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+app.use(multer({
+  storage: fileStorage,
+  fileFilter: filrfilter
+}).single("image"));
+
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
   session({
@@ -42,6 +67,12 @@ app.use(csrfProtection);
 app.use(flash());
 
 app.use((req, res, next) => {
+  res.locals.isAuthenticated = req.session.isLoggedIn;
+  res.locals.csrfToken = req.csrfToken();
+  next();
+});
+
+app.use((req, res, next) => {
   if (!req.session.user) {
     return next();
   }
@@ -50,22 +81,29 @@ app.use((req, res, next) => {
       req.user = user;
       next();
     })
-    .catch(err => console.log(err));
-});
-
-app.use((req, res, next) => {
-  res.locals.isAuthenticated = req.session.isLoggedIn;
-  res.locals.csrfToken = req.csrfToken();
-  next();
+    .catch(err =>
+      newxt(new Error(err)));
 });
 
 app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
+
+app.use("/500", errorController.get500);
 app.use(errorController.get404);
 
+app.use((error, req, res, next) => {
+  res.status(500).render("500", {
+    pageTitle: "Error!",
+    path: "/500",
+  });
+});
+
 mongoose
-  .connect(MONGODB_URI)
+  .connect(MONGODB_URI, {
+    useUnifiedTopology: true,
+    useNewUrlParser: true
+  })
   .then(result => {
     app.listen(3000);
   })

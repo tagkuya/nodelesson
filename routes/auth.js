@@ -1,5 +1,8 @@
 const express = require("express");
-const { check } = require("express-validator/check");
+const {
+  check,
+  validationResult
+} = require('express-validator');
 
 const authController = require("../controllers/auth");
 const User = require("../models/user");
@@ -17,14 +20,15 @@ router.get("/reset", authController.getRest);
 router.post(
   "/login",
   check("email")
-    .isEmail()
-    .withMessage("Please enter valid e-mail address")
-    .normalizeEmail(),
+  .isEmail()
+  .withMessage("Please enter valid e-mail address"),
   check("password")
-    .isLength({ min: 8 })
-    .isAlphanumeric()
-    .withMessage("Password has to be valid")
-    .trim(),
+  .isLength({
+    min: 8
+  })
+  .isAlphanumeric()
+  .withMessage("Password has to be valid")
+  .trim(),
   authController.postLogin
 );
 
@@ -32,16 +36,20 @@ router.post(
   "/signup",
   [
     check("email")
-      .isEmail()
-      .withMessage("Please input valid e-mail address")
-      .normalizeEmail()
-      .custom((value, { req }) => {
-        return User.findOne({ email: value }).then(userDoc => {
-          if (userDoc) {
-            return Promise.reject("Please pick a different one.");
-          }
-        });
-      })
+    .isEmail()
+    .withMessage("Please input valid e-mail address")
+    .normalizeEmail()
+    .custom((value, {
+      req
+    }) => {
+      return User.findOne({
+        email: value
+      }).then(userDoc => {
+        if (userDoc) {
+          return Promise.reject("Please pick a different one.");
+        }
+      });
+    })
   ],
   authController.postSignup
 );

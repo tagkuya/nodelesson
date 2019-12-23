@@ -4,7 +4,10 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const sendgrid = require("nodemailer-sendgrid-transport");
-const { validationResult } = require("express-validator/check");
+const {
+  check,
+  validationResult
+} = require('express-validator');
 
 const User = require("../models/user");
 
@@ -81,7 +84,9 @@ exports.postLogin = (req, res, next) => {
       validationErrors: errors.array()
     });
   }
-  User.findOne({ email: email }).then(user => {
+  User.findOne({
+    email: email
+  }).then(user => {
     if (!user) {
       return res.status(422).render("auth/login", {
         path: "/login",
@@ -120,6 +125,10 @@ exports.postLogin = (req, res, next) => {
         console.log(err);
         res.redirect("/login");
       });
+  }).catch(err => {
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    return next(error);
   });
 };
 
@@ -148,7 +157,9 @@ exports.postSignup = (req, res, next) => {
       const user = new User({
         email: email,
         password: hashedPassword,
-        cart: { items: [] }
+        cart: {
+          items: []
+        }
       });
       return user.save();
     })
@@ -164,7 +175,9 @@ exports.postSignup = (req, res, next) => {
         .then();
     })
     .catch(err => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
@@ -183,8 +196,8 @@ exports.postReset = (req, res, next) => {
     }
     const token = buffer.toString("hex");
     User.findOne({
-      email: req.body.email
-    })
+        email: req.body.email
+      })
       .then(user => {
         if (!user) {
           req.flash("error", "User Not Existed");
@@ -207,7 +220,9 @@ exports.postReset = (req, res, next) => {
         });
       })
       .catch(err => {
-        console.log(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
       });
   });
 };
@@ -215,9 +230,11 @@ exports.postReset = (req, res, next) => {
 exports.getNewPassword = (req, res, next) => {
   const token = req.params.token;
   User.findOne({
-    resetToken: token,
-    resetTokenExpiration: { $gt: Date.now() }
-  })
+      resetToken: token,
+      resetTokenExpiration: {
+        $gt: Date.now()
+      }
+    })
     .then(user => {
       let message = req.flash("error");
       if (message.length > 0) {
@@ -234,7 +251,9 @@ exports.getNewPassword = (req, res, next) => {
       });
     })
     .catch(err => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
@@ -244,10 +263,12 @@ exports.postNewPassword = (req, res, next) => {
   const passwordToken = req.body.passwordToken;
   let resetUser;
   User.findOne({
-    resetToken: passwordToken,
-    resetTokenExpiration: { $gt: Date.now() },
-    _id: userId
-  })
+      resetToken: passwordToken,
+      resetTokenExpiration: {
+        $gt: Date.now()
+      },
+      _id: userId
+    })
     .then(user => {
       resetUser = user;
       return bcrypt.hash(newPassword, 12);
@@ -262,6 +283,8 @@ exports.postNewPassword = (req, res, next) => {
       res.redirect("/login");
     })
     .catch(err => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };

@@ -31,12 +31,12 @@ const fileStorage = multer.diskStorage({
     cd(null, "images");
   },
   filename: (req, file, cb) => {
-    cb(null, new Date().toISOString() + "-", file.originalname)
+    cb(null, new Date().toISOString() + "-" + file.originalname)
   }
 });
 
 const fileFilter = (req, file, cd) => {
-  if (file.mimetype === "images/png" || file.mimetype === "images/jpg" || file.mimetype === "images/jpeg") {
+  if (file.mimetype === "image/png" || file.mimetype === "image/jpg" || file.mimetype === "image/jpeg") {
     cd(null, true)
   } else {
     cd(null, false)
@@ -49,12 +49,14 @@ app.set("views", "views");
 app.use(bodyParser.urlencoded({
   extended: false
 }));
+
 app.use(multer({
   storage: fileStorage,
-  fileFilter: filrfilter
+  fileFilter: fileFilter
 }).single("image"));
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/images", express.static(path.join(__dirname, "images")));
 app.use(
   session({
     secret: "my secret",

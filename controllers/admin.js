@@ -1,4 +1,6 @@
 const Product = require("../models/product");
+const fileHelper = require("../util/file");
+
 const {
   check,
   validationResult
@@ -134,6 +136,7 @@ exports.postEditProduct = (req, res, next) => {
       product.price = updatedPrice;
       product.description = updatedDesc;
       if (image) {
+        fileHelper.deleteFile(product.image.path);
         product.imageUrl = image.path;
       }
       return product.save().then(result => {
@@ -149,8 +152,8 @@ exports.postEditProduct = (req, res, next) => {
 
 exports.getProducts = (req, res, next) => {
   Product.find({
-      userId: req.session.user._id
-    })
+    userId: req.session.user._id
+  })
     .then(products => {
       console.log(products);
       res.render("admin/products", {
@@ -166,18 +169,23 @@ exports.getProducts = (req, res, next) => {
     });
 };
 
-exports.postDeleteProduct = (req, res, next) => {
-  const prodId = req.body.productId;
-  Product.deleteOne({
-      _id: prodId,
-      userId: req.user._id
-    })
-    .then(() => {
-      res.redirect("/admin/products");
+exports.deleteProduct = (req, res, next) => {
+  const prodId = req.params.productId;
+  Product.findById(prodId)
+    .then((prod) => {
+      if (!prod) {
+        return next(new Error("Product not found."))
+      }
+      fileHelper.deleteFile(prod.imageUrl);
+      return Product.deleteOne({
+        _id: prodId,
+        userId: req.user._id
+      })
+    }).then(() => {
+      // res.redirect("/admin/products");
+      res.status(200).json({ message: "Success!" });
     })
     .catch(err => {
-      const error = new Error(err);
-      error.httpStatusCode = 500;
-      return next(error);
+      res.status(500).json({ message: "Deleting product failed." });
     });
 };
